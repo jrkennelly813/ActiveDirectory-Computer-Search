@@ -2,60 +2,72 @@ Import-Module ActiveDirectory
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-#Region Functions
-Function SearchAssetTag ($Asset) {
-    If ($Asset -Match "^\d{6}$") {
-        $Computer = Get-ADComputer -Filter ('Name -Like "*'+ $Asset +'*"')
-        return $Computer
-    }
-    Else {
-        return 'No Computer Found'
-    }
-    
-}
-#EndRegion 
 #Region UI
 $Form = New-Object System.Windows.Forms.Form
-$Form.Text = "Active Directory Computer Search"
+$Form.Text = "AD Computer Search"
 $Form.StartPosition = 'CenterScreen'
 $Form.ClientSize = '225, 150'
 
-$SearchBase = New-Object System.Windows.Forms.ComboBox
-$SearchBase.Text = "Search Filter"
-$SearchBase.AutoSize = $True
-$SearchBase.Location = New-Object System.Drawing.Point(20, 15)
-$SearchBase.Items.AddRange(@('Asset Tag #', 'Building', 'Room', 'OU'))  
+$LayoutPanel = New-Object System.Windows.Forms.TableLayoutPanel
+$LayoutPanel.Dock = "Fill"
+$LayoutPanel.ColumnCount = 4
+$LayoutPanel.RowCount = 3
+$LayoutPanel.CellBorderStyle = 1
+[void]$LayoutPanel.ColumnStyles.Add((new-object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 10)))
+[void]$LayoutPanel.ColumnStyles.Add((new-object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 10)))
+[void]$LayoutPanel.ColumnStyles.Add((new-object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 15)))
+[void]$LayoutPanel.ColumnStyles.Add((new-object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 15)))
+[void]$LayoutPanel.RowStyles.Add((new-object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 10)))
+[void]$LayoutPanel.RowStyles.Add((new-object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 10)))
+[void]$LayoutPanel.RowStyles.Add((new-object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 10)))
 
 $SearchField = New-Object System.Windows.Forms.TextBox
 $SearchField.Text = ""
-$SearchField.Location = New-Object System.Drawing.Point(20, 42)
+$SearchField.Dock = 'Fill'
+$SearchField.Anchor = 'Left, Right'
 
 $SearchButton = New-Object System.Windows.Forms.Button
 $SearchButton.Text = "Search"
 $SearchButton.AutoSize = $True
-$SearchButton.Location = New-Object System.Drawing.Point(125, 40)
+$SearchButton.Dock = 'Fill'
 
-$ComputerInfo = New-Object System.Windows.Forms.TextBox
-$ComputerInfo.Text = ""
-$ComputerInfo.Multiline = $True
-$ComputerInfo.ScrollBars = 'Both'
-$ComputerInfo.Size = New-Object System.Drawing.Point(180, 65)
-$ComputerInfo.Location = New-Object System.Drawing.Point(20, 75)
+$ExecuteButton = New-Object System.Windows.Forms.Button
+$ExecuteButton.Text = "Execute"
+$ExecuteButton.AutoSize = $True
+$ExecuteButton.Dock = 'Fill'
 
-$Form.Controls.AddRange(@($SearchBase, $SearchField, $SearchButton, $ComputerInfo))
+$ComputerList = New-Object system.Windows.Forms.ListBox
+$ComputerList.Dock = 'Fill'
+
+$Output = New-Object system.Windows.Forms.TextBox
+$Output.multiline = $true
+$Output.Dock = 'Fill'
+
+$LayoutPanel.Controls.Add($SearchField, 0, 0)
+$LayoutPanel.SetColumnSpan($SearchField, 2)
+$LayoutPanel.Controls.Add($SearchButton, 2, 0)
+$LayoutPanel.Controls.Add($ExecuteButton, 3, 0)
+$LayoutPanel.Controls.Add($ComputerList, 0, 1)
+$LayoutPanel.SetColumnSpan($ComputerList, 2)
+$LayoutPanel.SetRowSpan($ComputerList, 2)
+$LayoutPanel.Controls.Add($Output, 1, 1)
+$LayoutPanel.SetColumnSpan($Output, 2)
+$LayoutPanel.SetRowSpan($Output, 2)
+
+
+$Form.Controls.Add($LayoutPanel)
 #EndRegion
-#Region UI Events
-$SearchButton.Add_Click({
-    If ($SearchBase.Text -eq 'Asset Tag #') {
-        $Info = SearchAssetTag -Asset $SearchField.Text
-        try {
-            $ComputerInfo.Text = $Info.toString().split(',')
-        }
-        catch {
-            $ComputerInfo.Text = 'Computer cannot be found'
-        }
-    }
 
-})
+#Region UI Events
+$SearchButton.Add_Click( {
+        $Computer = Get-ADComputer -Filter ('Name -Like "*' + $SearchField.Text + '*"')
+        $Computer | ForEach-Object { $ComputerList.Items.Add($_.Name) }
+    })
+
+$ExecuteButton.Add_Click( {
+        foreach ($Computer in $ComputerList.SelectedItems) {
+            $Output.Text += $Computer
+        }
+    })
 
 [void]$Form.ShowDialog()
